@@ -1,9 +1,12 @@
 define(['js/qlik', './properties'], function (qlik, properties) {
+
+    var myTable;
+
     return {
         initialProperties: {conditionalVis: [], defaultMasterObject: ''},
         support: {snapshot: true},
         definition: properties,
-        template: '<div style="display:block;  width:100%; height:100%; overflow:visible;"></div>',
+        template: '<div id="FEI" style="display:block;  width:100%; height:100%; overflow:visible;"></div>',
         controller: function ($scope, $element) {
             // Make sure the selections bar can overlay the extension's boundaries
             $(".qv-object .qv-inner-object").css('overflow','visible');
@@ -35,7 +38,7 @@ define(['js/qlik', './properties'], function (qlik, properties) {
                 else if(!chart && chart !== $scope.currentChart){
                     if ($scope.currentChartModel){
                         $scope.currentChart = null;
-                        destroyObject();
+//                      destroyObject();
                     }
                 }
                 else if(!chart && chart === $scope.currentChart){
@@ -62,9 +65,6 @@ define(['js/qlik', './properties'], function (qlik, properties) {
                 else if($scope.component.model.layout.defaultMasterObject){activeChart = $scope.component.model.layout.defaultMasterObject.split('|')[1]}
                 else{activeChart = null}
 
-                console.log('Condition Results:',conditionResults);
-                console.log('Active Chart is: ', activeChart);
-
                 return activeChart;
             };
 
@@ -73,16 +73,18 @@ define(['js/qlik', './properties'], function (qlik, properties) {
             function renderChart() {
                 if($scope.currentChartModel==null) {
                     $scope.app.getObject($element.find('div'), $scope.currentChart).then(function(model) {
+                        myTable = qlik.table(model);
                         $scope.currentChartModel = model;
                     });
                 }
                 else {
                     $scope.currentChartModel.enigmaModel.endSelections(true)
-                        .then(destroyObject)
+//                      .then(destroyObject)
                         .then(
                         function() {
                             $scope.app.getObject($element.find('div'), $scope.currentChart)
                                 .then(function(model) {
+                                myTable = qlik.table(model);
                                 $scope.currentChartModel = model;
                             });
                         });
@@ -106,7 +108,27 @@ define(['js/qlik', './properties'], function (qlik, properties) {
             };
 
         },
-        paint: function ($element, $layout) {},
+        paint: function ($element, $layout) {
+   
+            if ( $("#exportXL" ).length == 0 ) {
+
+               var $exportDiv    = $("<div>", {id: "exportDiv"});
+               var $exportButton = $("<button>", {id: "exportXL", "class":"lui-button"});
+               $exportButton.html('Excel');
+               $exportButton.bind('click', function( ) {
+                     if( myTable ) {
+                        myTable.exportData({download:true});
+                        myTable = null;
+                     }
+                     else {
+                        console.log('nothing to export');
+                     }
+                     return qlik.Promise.resolve();
+                  });
+               $exportDiv.append( $exportButton );                
+               $("article[tid='qv-object-FEI-ShowHide']").before( $exportDiv );
+            }
+        },
         resize: function () {
             return false; // We do not need to handle resizes in this extension as the charts will resize themselves.
         }
